@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# fix permission denied srror: git update-index --chmod=+x build.sh
 
 set -e
 
