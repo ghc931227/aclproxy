@@ -1,0 +1,27 @@
+
+# 2021-10-11 13:43:15
+direct domain-suffix github.com
+
+## localhost
+direct cidr 192.168.137.0/24
+hijack ip 0.0.0.0 127.0.0.1
+
+## microsoft
+block domain-suffix events.data.microsoft.com
+block domain-suffix nav.smartscreen.microsoft.com
+direct domain-suffix sharepoint.com
+direct domain-suffix windows.net
+direct domain-suffix office.net
+direct domain-suffix microsoft.com
+direct domain-suffix office365.com
+direct domain-suffix microsoftonline.com
+direct domain-suffix msedge.net
+direct domain-suffix svc.ms
+direct domain-suffix bing.com
+direct domain-suffix live.com
+direct domain-suffix msn.com
+
+# cn
+direct country cn
+
+proxy all
