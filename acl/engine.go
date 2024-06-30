@@ -3,8 +3,11 @@ package acl
 import (
 	"aclproxy/utils"
 	"bufio"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/net/idna"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -78,9 +81,21 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 	ip, zone := utils.ParseIPZone(host)
 	if ip == nil {
 		// Domain
+		// idna domain: unicode domain name
+		if strings.HasPrefix(host, "xn--") {
+			vhost, err := idna.ToUnicode(host)
+			if err == nil {
+				host = vhost
+			}
+		}
 		ipAddr, err := e.ResolveIPAddr(host)
 		if ce, ok := e.Cache.Get(cacheKey{host, port, isUDP}); ok {
 			// Cache hit
+			logrus.WithFields(logrus.Fields{
+				"action": ActionToString(ce.Action, ce.Arg),
+				"host":   host,
+				"port":   strconv.Itoa(int(port)),
+			}).Debug("HTTP request")
 			return ce.Action, ce.Arg, true, ipAddr, err
 		}
 		for _, entry := range e.Entries {
@@ -100,19 +115,35 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 			if entry.Match(mReq) {
 				e.Cache.Add(cacheKey{host, port, isUDP},
 					cacheValue{entry.Action, entry.ActionArg})
+				logrus.WithFields(logrus.Fields{
+					"action": ActionToString(entry.Action, entry.ActionArg),
+					"host":   host,
+					"port":   strconv.Itoa(int(port)),
+				}).Debug("HTTP request")
 				return entry.Action, entry.ActionArg, true, ipAddr, err
 			}
 		}
 		e.Cache.Add(cacheKey{host, port, isUDP}, cacheValue{e.DefaultAction, ""})
+		logrus.WithFields(logrus.Fields{
+			"action": ActionToString(e.DefaultAction, ""),
+			"host":   host,
+			"port":   strconv.Itoa(int(port)),
+		}).Debug("HTTP request")
 		return e.DefaultAction, "", true, ipAddr, err
 	} else {
+		ipAddr := &net.IPAddr{
+			IP:   ip,
+			Zone: zone,
+		}
 		// IP
 		if ce, ok := e.Cache.Get(cacheKey{ip.String(), port, isUDP}); ok {
 			// Cache hit
-			return ce.Action, ce.Arg, false, &net.IPAddr{
-				IP:   ip,
-				Zone: zone,
-			}, nil
+			logrus.WithFields(logrus.Fields{
+				"action": ActionToString(ce.Action, ce.Arg),
+				"host":   host,
+				"port":   strconv.Itoa(int(port)),
+			}).Debug("HTTP request")
+			return ce.Action, ce.Arg, false, ipAddr, nil
 		}
 		for _, entry := range e.Entries {
 			mReq := MatchRequest{
@@ -128,16 +159,20 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 			if entry.Match(mReq) {
 				e.Cache.Add(cacheKey{ip.String(), port, isUDP},
 					cacheValue{entry.Action, entry.ActionArg})
-				return entry.Action, entry.ActionArg, false, &net.IPAddr{
-					IP:   ip,
-					Zone: zone,
-				}, nil
+				logrus.WithFields(logrus.Fields{
+					"action": ActionToString(entry.Action, entry.ActionArg),
+					"host":   host,
+					"port":   strconv.Itoa(int(port)),
+				}).Debug("HTTP request")
+				return entry.Action, entry.ActionArg, false, ipAddr, nil
 			}
 		}
 		e.Cache.Add(cacheKey{ip.String(), port, isUDP}, cacheValue{e.DefaultAction, ""})
-		return e.DefaultAction, "", false, &net.IPAddr{
-			IP:   ip,
-			Zone: zone,
-		}, nil
+		logrus.WithFields(logrus.Fields{
+			"action": ActionToString(e.DefaultAction, ""),
+			"host":   host,
+			"port":   strconv.Itoa(int(port)),
+		}).Debug("HTTP request")
+		return e.DefaultAction, "", false, ipAddr, nil
 	}
 }

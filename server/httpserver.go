@@ -3,6 +3,7 @@ package server
 import (
 	"aclproxy/acl"
 	"aclproxy/utils"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/elazarl/goproxy/ext/auth"
@@ -23,7 +24,7 @@ func NewProxyHTTPServer(proxyDialer proxy.Dialer, transport *utils.ClientTranspo
 	proxy.Logger = &nopLogger{}
 	proxy.NonproxyHandler = http.NotFoundHandler()
 	proxy.Tr = &http.Transport{
-		Dial: func(network, addr string) (conn net.Conn, err error) {
+		DialContext: func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
 			defer func() {
 				if err != nil {
 					logrus.WithFields(logrus.Fields{
@@ -45,10 +46,6 @@ func NewProxyHTTPServer(proxyDialer proxy.Dialer, transport *utils.ClientTranspo
 				action, arg, _, ipAddr, resErr = aclEngine.ResolveAndMatch(host, port, false)
 				// Doesn't always matter if the resolution fails, as we may send it through HyClient
 			}
-			logrus.WithFields(logrus.Fields{
-				"action": acl.ActionToString(action, arg),
-				"dst":    utils.DefaultIPMasker.Mask(addr),
-			}).Debug("HTTP request")
 			// Handle according to the action
 			switch action {
 			case acl.ActionDirect:

@@ -85,6 +85,10 @@ func main() {
 
 	aclEngine, err := acl.LoadFromFile(config.Acl, utils.DefaultClientTransport.ResolveIPAddr,
 		func() (*geoip2.Reader, error) {
+			if config.Mmdb == "" {
+				logrus.Info("no mmdb provided")
+				return nil, nil
+			}
 			return geoip2.Open(config.Mmdb)
 		},
 	)
