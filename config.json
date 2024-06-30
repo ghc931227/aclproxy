@@ -1,6 +1,6 @@
 {
   "listen": "socks://127.0.0.1:1085",
-  "router": "http://127.0.0.1:1084",
+  "router": "http://127.0.0.1:1080",
   "acl": "acl.txt",
   "mmdb": "country.mmdb"
 }
