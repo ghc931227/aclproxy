@@ -7,15 +7,16 @@ import (
 	"aclproxy/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/oschwald/geoip2-golang"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/net/proxy"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/net/proxy"
 )
 
 type config struct {
@@ -97,6 +98,10 @@ func main() {
 			"error": err,
 		}).Fatal("Failed to parse client configuration")
 	}
+	syncAcl(config, func(engine *acl.Engine) {
+		aclEngine.Entries = engine.Entries
+		aclEngine.Cache = engine.Cache
+	})
 
 	var authFunc func(user, password string) bool
 	routerPassword, routerPasswordSet := routerURL.User.Password()
@@ -128,4 +133,58 @@ func main() {
 	} else {
 		logrus.Fatal("Unsupported router proxy scheme")
 	}
+
+}
+
+func syncAcl(config config, callback func(engine *acl.Engine)) {
+	origFi, err := os.Stat(config.Acl)
+	if err != nil {
+		return
+	}
+	prevSize := origFi.Size()
+	prevModTime := origFi.ModTime()
+	go func() {
+		for {
+			reload := false
+			fi, err := os.Stat(config.Acl)
+			if err != nil {
+				return
+			}
+			if !os.SameFile(origFi, fi) {
+				return
+			}
+			size := fi.Size()
+			// File got truncated or File got bigger
+			if prevSize > 0 && prevSize != size {
+				prevSize = size
+				reload = true
+			}
+
+			// File was appended to (changed)?
+			modTime := fi.ModTime()
+			if modTime != prevModTime {
+				prevModTime = modTime
+				reload = true
+			}
+			if reload {
+				aclEngine, err := acl.LoadFromFile(config.Acl, utils.DefaultClientTransport.ResolveIPAddr,
+					func() (*geoip2.Reader, error) {
+						if config.Mmdb == "" {
+							logrus.Info("no mmdb provided")
+							return nil, nil
+						}
+						return geoip2.Open(config.Mmdb)
+					},
+				)
+				if err != nil {
+					return
+				}
+				logrus.Debug("acl rule reloaded")
+				callback(aclEngine)
+			}
+
+			time.Sleep(2500 * time.Millisecond)
+		}
+
+	}()
 }
