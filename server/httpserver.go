@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/proxy"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/elazarl/goproxy"
@@ -45,6 +46,10 @@ func NewProxyHTTPServer(proxyDialer proxy.Dialer, transport *utils.ClientTranspo
 				action, arg, _, ipAddr, resErr = aclEngine.ResolveAndMatch(host, port, false)
 				// Doesn't always matter if the resolution fails, as we may send it through HyClient
 			}
+			logrus.WithFields(logrus.Fields{
+				"action": acl.ActionToString(action, arg),
+				"dst":    utils.DefaultIPMasker.Mask(addr),
+			}).Debug("HTTP request")
 			// Handle according to the action
 			switch action {
 			case acl.ActionDirect:
@@ -61,13 +66,22 @@ func NewProxyHTTPServer(proxyDialer proxy.Dialer, transport *utils.ClientTranspo
 			case acl.ActionBlock:
 				return nil, errors.New("blocked by ACL")
 			case acl.ActionHijack:
-				hijackIPAddr, err := transport.ResolveIPAddr(arg)
+				argHost, argPort, err := utils.SplitHostPort(arg)
+				if err != nil {
+					if strings.HasSuffix(err.Error(), " missing port in address") {
+						argHost = arg
+						argPort = port
+					} else {
+						return nil, err
+					}
+				}
+				hijackIPAddr, err := transport.ResolveIPAddr(argHost)
 				if err != nil {
 					return nil, err
 				}
 				return transport.DialTCP(&net.TCPAddr{
 					IP:   hijackIPAddr.IP,
-					Port: int(port),
+					Port: int(argPort),
 					Zone: hijackIPAddr.Zone,
 				})
 			default:

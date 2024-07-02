@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 )
 
 import (
@@ -197,7 +198,16 @@ func (s *Socks5Server) handleTCP(c *net.TCPConn, r *socks5.Request) error {
 		closeErr = errors.New("blocked in ACL")
 		return nil
 	case acl.ActionHijack:
-		hijackIPAddr, err := s.Transport.ResolveIPAddr(arg)
+		argHost, argPort, err := utils.SplitHostPort(arg)
+		if err != nil {
+			if strings.HasSuffix(err.Error(), " missing port in address") {
+				argHost = arg
+				argPort = port
+			} else {
+				return err
+			}
+		}
+		hijackIPAddr, err := s.Transport.ResolveIPAddr(argHost)
 		if err != nil {
 			_ = sendReply(c, socks5.RepHostUnreachable)
 			closeErr = err
@@ -205,7 +215,7 @@ func (s *Socks5Server) handleTCP(c *net.TCPConn, r *socks5.Request) error {
 		}
 		rc, err := s.Transport.DialTCP(&net.TCPAddr{
 			IP:   hijackIPAddr.IP,
-			Port: int(port),
+			Port: int(argPort),
 			Zone: hijackIPAddr.Zone,
 		})
 		if err != nil {

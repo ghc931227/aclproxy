@@ -1,6 +1,6 @@
-
+hijack domain-suffix 阿里云.vps 127.0.0.1:5244
 # 2021-10-11 13:43:15
-direct domain-suffix github.com
+proxy domain-suffix github.com
 
 ## localhost
 direct cidr 192.168.137.0/24
