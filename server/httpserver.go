@@ -47,8 +47,8 @@ func NewProxyHTTPServer(proxyDialer proxy.Dialer, transport *utils.ClientTranspo
 				// Doesn't always matter if the resolution fails, as we may send it through HyClient
 			}
 			logrus.WithFields(logrus.Fields{
-				"action": acl.ActionToString(action, arg),
-				"dst":    utils.DefaultIPMasker.Mask(addr),
+				"action":  acl.ActionToString(action, arg),
+				"request": utils.ParseRequest(addr),
 			}).Debug("HTTP request")
 			// Handle according to the action
 			switch action {

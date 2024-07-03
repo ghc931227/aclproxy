@@ -254,21 +254,21 @@ func parseRequestAddress(r *socks5.Request) (host string, port uint16, addr stri
 func TCPRequestFunc(addr net.Addr, reqAddr string, action acl.Action, arg string) {
 	logrus.WithFields(logrus.Fields{
 		"action": acl.ActionToString(action, arg),
-		"src":    utils.DefaultIPMasker.Mask(addr.String()),
-		"dst":    utils.DefaultIPMasker.Mask(reqAddr),
+		//"src":    utils.DefaultIPMasker.Mask(addr.String()),
+		"request": utils.ParseRequest(reqAddr),
 	}).Debug("SOCKS5 TCP request")
 }
 func TCPErrorFunc(addr net.Addr, reqAddr string, err error) {
 	if err != io.EOF {
 		logrus.WithFields(logrus.Fields{
 			"error": err,
-			"src":   utils.DefaultIPMasker.Mask(addr.String()),
-			"dst":   utils.DefaultIPMasker.Mask(reqAddr),
+			//"src":   utils.DefaultIPMasker.Mask(addr.String()),
+			"request": utils.ParseRequest(reqAddr),
 		}).Info("SOCKS5 TCP error")
 	} else {
 		logrus.WithFields(logrus.Fields{
-			"src": utils.DefaultIPMasker.Mask(addr.String()),
-			"dst": utils.DefaultIPMasker.Mask(reqAddr),
+			//"src": utils.DefaultIPMasker.Mask(addr.String()),
+			"request": utils.ParseRequest(reqAddr),
 		}).Info("SOCKS5 TCP EOF")
 	}
 }

@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"golang.org/x/net/idna"
 	"net"
 	"strconv"
+	"strings"
 )
 
 func SplitHostPort(hostport string) (string, uint16, error) {
@@ -39,4 +41,15 @@ func last(s string, b byte) int {
 		}
 	}
 	return i
+}
+
+func ParseRequest(addr string) string {
+	req := DefaultIPMasker.Mask(addr)
+	if strings.HasPrefix(addr, "xn--") {
+		host, err := idna.ToUnicode(req)
+		if err == nil {
+			req = host
+		}
+	}
+	return req
 }

@@ -177,7 +177,10 @@ func syncAcl(config config, callback func(engine *acl.Engine)) {
 					},
 				)
 				if err != nil {
-					return
+					logrus.WithFields(logrus.Fields{
+						"error": err,
+					}).Error("Failed to load acl file")
+					continue
 				}
 				logrus.Debug("acl rule reloaded")
 				callback(aclEngine)

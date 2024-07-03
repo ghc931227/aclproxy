@@ -3,11 +3,9 @@ package acl
 import (
 	"aclproxy/utils"
 	"bufio"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/idna"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -88,15 +86,15 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 				host = vhost
 			}
 		}
+		//request := net.JoinHostPort(host, strconv.Itoa(int(port)))
 		ipAddr, err := e.ResolveIPAddr(host)
 		if ce, ok := e.Cache.Get(cacheKey{host, port, isUDP}); ok {
 			// Cache hit
-			logrus.WithFields(logrus.Fields{
-				"from":   "acl cache",
-				"action": ActionToString(ce.Action, ce.Arg),
-				"host":   host,
-				"port":   strconv.Itoa(int(port)),
-			}).Debug("ACL ENGINE")
+			//logrus.WithFields(logrus.Fields{
+			//	"from":    "acl cache",
+			//	"action":  ActionToString(ce.Action, ce.Arg),
+			//	"request": request,
+			//}).Debug("ACL ENGINE")
 			return ce.Action, ce.Arg, true, ipAddr, err
 		}
 		for _, entry := range e.Entries {
@@ -116,37 +114,35 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 			if entry.Match(mReq) {
 				e.Cache.Add(cacheKey{host, port, isUDP},
 					cacheValue{entry.Action, entry.ActionArg})
-				logrus.WithFields(logrus.Fields{
-					"from":   "acl file",
-					"action": ActionToString(entry.Action, entry.ActionArg),
-					"host":   host,
-					"port":   strconv.Itoa(int(port)),
-				}).Debug("ACL ENGINE")
+				//logrus.WithFields(logrus.Fields{
+				//	"from":    "acl file",
+				//	"action":  ActionToString(entry.Action, entry.ActionArg),
+				//	"request": request,
+				//}).Debug("ACL ENGINE")
 				return entry.Action, entry.ActionArg, true, ipAddr, err
 			}
 		}
 		e.Cache.Add(cacheKey{host, port, isUDP}, cacheValue{e.DefaultAction, ""})
-		logrus.WithFields(logrus.Fields{
-			"from":   "default rule",
-			"action": ActionToString(e.DefaultAction, ""),
-			"host":   host,
-			"port":   strconv.Itoa(int(port)),
-		}).Debug("ACL ENGINE")
+		//logrus.WithFields(logrus.Fields{
+		//	"from":    "default rule",
+		//	"action":  ActionToString(e.DefaultAction, ""),
+		//	"request": request,
+		//}).Debug("ACL ENGINE")
 		return e.DefaultAction, "", true, ipAddr, err
 	} else {
 		ipAddr := &net.IPAddr{
 			IP:   ip,
 			Zone: zone,
 		}
+		//request := net.JoinHostPort(host, strconv.Itoa(int(port)))
 		// IP
 		if ce, ok := e.Cache.Get(cacheKey{ip.String(), port, isUDP}); ok {
 			// Cache hit
-			logrus.WithFields(logrus.Fields{
-				"from":   "acl cache",
-				"action": ActionToString(ce.Action, ce.Arg),
-				"host":   host,
-				"port":   strconv.Itoa(int(port)),
-			}).Debug("ACL ENGINE")
+			//logrus.WithFields(logrus.Fields{
+			//	"from":    "acl cache",
+			//	"action":  ActionToString(ce.Action, ce.Arg),
+			//	"request": request,
+			//}).Debug("ACL ENGINE")
 			return ce.Action, ce.Arg, false, ipAddr, nil
 		}
 		for _, entry := range e.Entries {
@@ -163,22 +159,20 @@ func (e *Engine) ResolveAndMatch(host string, port uint16, isUDP bool) (Action, 
 			if entry.Match(mReq) {
 				e.Cache.Add(cacheKey{ip.String(), port, isUDP},
 					cacheValue{entry.Action, entry.ActionArg})
-				logrus.WithFields(logrus.Fields{
-					"from":   "acl file",
-					"action": ActionToString(entry.Action, entry.ActionArg),
-					"host":   host,
-					"port":   strconv.Itoa(int(port)),
-				}).Debug("ACL ENGINE")
+				//logrus.WithFields(logrus.Fields{
+				//	"from":    "acl file",
+				//	"action":  ActionToString(entry.Action, entry.ActionArg),
+				//	"request": request,
+				//}).Debug("ACL ENGINE")
 				return entry.Action, entry.ActionArg, false, ipAddr, nil
 			}
 		}
 		e.Cache.Add(cacheKey{ip.String(), port, isUDP}, cacheValue{e.DefaultAction, ""})
-		logrus.WithFields(logrus.Fields{
-			"from":   "default rule",
-			"action": ActionToString(e.DefaultAction, ""),
-			"host":   host,
-			"port":   strconv.Itoa(int(port)),
-		}).Debug("ACL ENGINE")
+		//logrus.WithFields(logrus.Fields{
+		//	"from":    "default rule",
+		//	"action":  ActionToString(e.DefaultAction, ""),
+		//	"request": request,
+		//}).Debug("ACL ENGINE")
 		return e.DefaultAction, "", false, ipAddr, nil
 	}
 }
